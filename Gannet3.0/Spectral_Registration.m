@@ -3,6 +3,9 @@ function [AllFramesFTrealign, MRS_struct] = Spectral_Registration(MRS_struct, On
 %per Near et al. 2014 [under review].
 % OnWhat = 0 for spectro data OnWhat=1 for water data
 
+
+
+
 %MRS_struct.p.parsFit=[]; % MM
 ii=MRS_struct.ii; % MM
 
@@ -13,6 +16,15 @@ if(nargin==3)
         %We want to run this code twice, once for ONs, once for OFFs.
         SpecRegLoop=1;
     end
+    if(Dual==2)
+        %We want to run this code four times - once for A, once for B, ...
+        % once for C, once for D.
+        SpecRegLoop=3;
+        MRS_struct.fids.ON_OFF = repmat([1 0 0 0], 1, (size(MRS_struct.fids.data,2)/4)); 
+        MRS_struct.fids.ON_OFF = circshift(MRS_struct.fids.ON_OFF, SpecRegLoop, 2); 
+        tmp = 1;
+    end
+
 end
 while(SpecRegLoop>(-1))
     
@@ -33,6 +45,15 @@ while(SpecRegLoop>(-1))
                 flatdata(:,1,:)=real(MRS_struct.fids.data(:,(MRS_struct.fids.ON_OFF==SpecRegLoop)));
                 flatdata(:,2,:)=imag(MRS_struct.fids.data(:,(MRS_struct.fids.ON_OFF==SpecRegLoop)));
             end
+            if(Dual==2) % ADH 
+                %This code runs 4 times - once for each of A B C D.
+                %SpecRegLoop;
+                
+                flatdata(:,1,:)=real(MRS_struct.fids.data(:,(MRS_struct.fids.ON_OFF ==1)));
+                flatdata(:,2,:)=imag(MRS_struct.fids.data(:,(MRS_struct.fids.ON_OFF ==1)));
+
+            end
+
         else
             %First, take the complex data and turn it into a real matrix
             flatdata(:,1,:)=real(MRS_struct.fids.data);
@@ -40,8 +61,10 @@ while(SpecRegLoop>(-1))
         end
     end
     
-    %Correct to a point 10% into the file (seems better that the actual beginning)
-    AlignRow=ceil(size(flatdata,3)/10);
+    %Correct to a point 10% into the file (seems better that the actual
+    %beginning) - this might not actually be a great idea - might be better
+    %to use a window as Jamie does but something to come back to
+    AlignRow=ceil(size(flatdata,3)/10); 
     MRS_struct.fids.flattarget=squeeze(flatdata(:,:,AlignRow));
     
     
@@ -54,6 +77,8 @@ while(SpecRegLoop>(-1))
     %Fitting to determine frequency and phase corrections.
     reverseStr = ''; % MM
     for corrloop=1:size(flatdata,3)
+        
+        corrloop
         target=MRS_struct.fids.flattarget(:);
         transient=squeeze(flatdata(:,:,corrloop));
         input.data=transient(:);
@@ -106,6 +131,20 @@ while(SpecRegLoop>(-1))
                     
                     MRS_struct.fids.data_align(:,corrloop_d)=MRS_struct.fids.data(:,corrloop_d).*exp(1i*parsFit(corrloop,1)*2*pi*time)*exp(1i*pi/180*parsFit(corrloop,2));
                 end
+                
+                
+                 if(Dual==2) %ADH
+                    %Need to get the slot right to put data back into
+
+                    
+                    corrloop_d=(corrloop-1)*4+SpecRegLoop+1;
+                    
+                    MRS_struct.fids.data_align(:,corrloop_d)=MRS_struct.fids.data(:,corrloop_d).*exp(1i*parsFit(corrloop,1)*2*pi*time)*exp(1i*pi/180*parsFit(corrloop,2));
+                end
+
+                
+                
+                
                 CorrPars(corrloop_d,:)=parsFit(corrloop,:);
             else
                 corrloop_d=corrloop;
@@ -165,9 +204,49 @@ while(SpecRegLoop>(-1))
                     
                 end
                 
-                MRS_struct.out.FreqStdevHz(MRS_struct.ii)=std(parsFit(:,1),1);
-                MRS_struct.out.CrFWHMHz(MRS_struct.ii)=mean([ChoCrMeanSpecFitON(2) ChoCrMeanSpecFitOFF(2)]);
-            else
+%                 MRS_struct.out.FreqStdevHz(MRS_struct.ii)=std(parsFit(:,1),1);
+%                 MRS_struct.out.CrFWHMHz(MRS_struct.ii)=mean([ChoCrMeanSpecFitON(2) ChoCrMeanSpecFitOFF(2)]);
+%             if(Dual == 2)
+%                     ChoCrMeanSpec_1 = mean(AllFramesFTrealign(cclb:ccub,1:4:320),2);
+%                     ChoCrMeanSpec_2 = mean(AllFramesFTrealign(cclb:ccub,2:4:320),2);
+%                     ChoCrMeanSpec_3 = mean(AllFramesFTrealign(cclb:ccub,3:4:320),2);
+%                     ChoCrMeanSpec_4 = mean(AllFramesFTrealign(cclb:ccub,4:4:320),2);
+%                     
+%                     ChoCrMeanSpecFit_1 = FitChoCr(freqrange, ChoCrMeanSpec_1, ChoCr_initx,MRS_struct.p.LarmorFreq);
+%                     ChoCrMeanSpecFit_2 = FitChoCr(freqrange, ChoCrMeanSpec_2, ChoCr_initx,MRS_struct.p.LarmorFreq);
+%                     ChoCrMeanSpecFit_3 = FitChoCr(freqrange, ChoCrMeanSpec_3, ChoCr_initx,MRS_struct.p.LarmorFreq);
+%                     ChoCrMeanSpecFit_4 = FitChoCr(freqrange, ChoCrMeanSpec_4, ChoCr_initx,MRS_struct.p.LarmorFreq);
+%                    
+%                     AllFramesFTrealign(:,1:4:320)=AllFramesFTrealign(:,1:4:320)*exp(1i*pi/180*(ChoCrMeanSpecFit_1(4)));%phase
+%                     AllFramesFTrealign(:,2:4:320)=AllFramesFTrealign(:,2:4:320)*exp(1i*pi/180*(ChoCrMeanSpecFit_1(4)));%phase
+%                     AllFramesFTrealign(:,3:4:320)=AllFramesFTrealign(:,3:4:320)*exp(1i*pi/180*(ChoCrMeanSpecFit_1(4)));%phase
+%                     AllFramesFTrealign(:,4:4:320)=AllFramesFTrealign(:,4:4:320)*exp(1i*pi/180*(ChoCrMeanSpecFit_1(4)));%phase
+%                   
+%                     ChoCrFreqShift_1 = ChoCrMeanSpecFit_1(3);
+%                     ChoCrFreqShift_1 = ChoCrFreqShift_1 - 3.02*MRS_struct.p.LarmorFreq;
+%                     ChoCrFreqShift_1 = ChoCrFreqShift_1 ./ (MRS_struct.p.LarmorFreq*(MRS_struct.spec.freq(ii,2) - MRS_struct.spec.freq(ii,1) ));
+%                     ChoCrFreqShift_points_1 = round(ChoCrFreqShift_1);
+%                     AllFramesFTrealign(:,1:4:320)=circshift(AllFramesFTrealign(:,1:4:320), [-ChoCrFreqShift_points_1 0]);%freq
+%                     
+%                     ChoCrFreqShift_2 = ChoCrMeanSpecFit_2(3);
+%                     ChoCrFreqShift_2 = ChoCrFreqShift_2 - 3.02*MRS_struct.p.LarmorFreq;
+%                     ChoCrFreqShift_2 = ChoCrFreqShift_2 ./ (MRS_struct.p.LarmorFreq*(MRS_struct.spec.freq(ii,2) - MRS_struct.spec.freq(ii,1) ));
+%                     ChoCrFreqShift_points_2 = round(ChoCrFreqShift_2);
+%                     AllFramesFTrealign(:,2:4:320)=circshift(AllFramesFTrealign(:,2:4:320), [-ChoCrFreqShift_points_2 0]);%freq
+%                     
+%                     ChoCrFreqShift_3 = ChoCrMeanSpecFit_3(3);
+%                     ChoCrFreqShift_3 = ChoCrFreqShift_3 - 3.02*MRS_struct.p.LarmorFreq;
+%                     ChoCrFreqShift_3 = ChoCrFreqShift_3 ./ (MRS_struct.p.LarmorFreq*(MRS_struct.spec.freq(ii,2) - MRS_struct.spec.freq(ii,1) ));
+%                     ChoCrFreqShift_points_3 = round(ChoCrFreqShift_3);
+%                     AllFramesFTrealign(:,3:4:320)=circshift(AllFramesFTrealign(:,3:4:320), [-ChoCrFreqShift_points_3 0]);%freq
+%                     
+%                     ChoCrFreqShift_4 = ChoCrMeanSpecFit_4(3);
+%                     ChoCrFreqShift_4 = ChoCrFreqShift_4 - 3.02*MRS_struct.p.LarmorFreq;
+%                     ChoCrFreqShift_4 = ChoCrFreqShift_4 ./ (MRS_struct.p.LarmorFreq*(MRS_struct.spec.freq(ii,2) - MRS_struct.spec.freq(ii,1) ));
+%                     ChoCrFreqShift_points_4 = round(ChoCrFreqShift_4);
+%                     AllFramesFTrealign(:,4:4:320)=circshift(AllFramesFTrealign(:,4:4:320), [-ChoCrFreqShift_points_4 0]);%freq
+%                     
+             else
                 ChoCrMeanSpecFit = FitChoCr(freqrange, ChoCrMeanSpec, ChoCr_initx,MRS_struct.p.LarmorFreq);
                 
                 % MM
@@ -243,8 +322,10 @@ while(SpecRegLoop>(-1))
             
             
         end
-    end
+        end
+    SpecRegLoop
     SpecRegLoop=SpecRegLoop-1;
+    tmp = tmp+1;
 end
 
 

@@ -457,6 +457,10 @@ for ii=1:numpfiles    %Loop over all files in the batch (from gabafile)
                 case 'SpecRegDual'
                     %Dual-channel Spectral Registration is applied separately to ON and OFF and they are coregistered after...
                     [AllFramesFTrealign MRS_struct] = Spectral_Registration(MRS_struct,0,1);
+                case 'SpecRegQuad'
+                    %Dual-channel Spectral Registration is applied separately to ON and OFF and they are coregistered after...
+                    [AllFramesFTrealign MRS_struct] = Spectral_Registration(MRS_struct,0,2);
+            
             end %end of switch for alignment targhelp arrayfunet
 
         
