@@ -40,7 +40,7 @@ MRS_struct.p.water_removal = 1;
 MRS_struct.p.LB = 3;
 MRS_struct.p.ZeroFillTo = 32768;
 %AlignTo planned options: Cr; Cho; NAA; H20; CrOFF
-MRS_struct.p.AlignTo = 'SpecReg'; %SpecReg default and recommended
+MRS_struct.p.AlignTo = 'SpecRegQuad'; %SpecReg default and recommended
 MRS_struct.p.Reg =  {'vox1', 'vox2'}; %Naming regions for analysis. e.g: anterior and posterior, right and left etc. Default values are vox1 and vox2 -- MGSaleh 2016
 
 %Flags
